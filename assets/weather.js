@@ -2,10 +2,10 @@ const API_KEY = '627ac73dd5336536d7552227e89866de';
 
 $(document).ready(() => {
     searchHistory.render();
-    currentWeather.fetch();
+    weather.fetch();
 });
 
-let currentWeather = {
+let weather = {
     _city: '',
     date: new Date(),
     temp: null,
@@ -23,23 +23,19 @@ let currentWeather = {
         this.fetch();
     },
 
-    fetch() {
-        $.get(`https://api.openweathermap.org/data/2.5/weather?q=${this.city}&appid=${API_KEY}&units=imperial`)
+    async fetch() {
+        let { coord } = await $.get(`https://api.openweathermap.org/data/2.5/weather?q=${this.city}&appid=${API_KEY}`)
+        $.get(`https://api.openweathermap.org/data/2.5/onecall?lon=${coord.lon}&lat=${coord.lat}&exclude=minutely,hourly,alerts&units=imperial&appid=${API_KEY}`)
             .then(res => {
-                $.get(`https://api.openweathermap.org/data/2.5/uvi?lat=${res.coord.lat}&lon=${res.coord.lon}&appid=${API_KEY}`)
-                    .then(res => {
-                        this.uvIndex = res.value;
-                        this.render();
-                    });
-
-                this.temp = res.main.temp;
-                this.humidity = res.main.humidity;
-                this.windSpeed = res.wind.speed;
-                this.render();
+                this.temp = res.current.temp;
+                this.humidity = res.current.humidity;
+                this.windSpeed = res.current.wind_speed;
+                this.uvIndex = res.current.uvi;
+                this.renderCurrent();
             });
     },
 
-    render() {
+    renderCurrent() {
         this.card.children('.card-title')
             .text(this.city);
         this._renderTemp();
@@ -79,7 +75,9 @@ let currentWeather = {
 
     _renderUvIndex() {
         this.card.children('#uv-index')
+            .empty()
             .append(
+                'UV Index: ',
                 $('<span>')
                     .addClass('badge')
                     .addClass(`uv-${this._uvIndexEvaluation()}`)
@@ -114,7 +112,7 @@ let searchHistory = {
                         .addClass('list-group-item list-group-item-action')
                         .addClass('city')
                         .text(city)
-                        .on('click', e => currentWeather.city = city)
+                        .on('click', e => weather.city = city)
                 )
             );
     }
@@ -125,7 +123,7 @@ $('form#city-search button[type="submit"]').on('click', function (e) {
     let inputCity = $('#input-city').val();
     if (inputCity !== '') {
         searchHistory.addCity(inputCity);
-        currentWeather.city = inputCity;
+        weather.city = inputCity;
         $('#input-city').val('');
     }
 });
