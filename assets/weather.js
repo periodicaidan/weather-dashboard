@@ -5,13 +5,7 @@ const ONECALL_ENDPOINT = `${OPENWEATHER_URL}/onecall?appid=${API_KEY}`;
 
 let weather = {
     _city: '',
-    // TODO: This need not be state tbh
     date: new Date(),
-    temp: null,
-    humidity: null,
-    windSpeed: null,
-    uvIndex: null,
-    iconId: null,
     card: $('#current-weather>.card-body'),
 
     get city() {
@@ -27,30 +21,42 @@ let weather = {
         let { coord } = await $.get(`${WEATHER_ENDPOINT}&q=${this.city}`)
         $.get(`${ONECALL_ENDPOINT}&lon=${coord.lon}&lat=${coord.lat}&exclude=minutely,hourly,alerts&units=imperial`)
             .then(res => {
-                this.temp = res.current.temp;
-                this.humidity = res.current.humidity;
-                this.windSpeed = res.current.wind_speed;
-                this.uvIndex = res.current.uvi;
-                this.iconId = res.current.weather[0].icon;
-                this.renderCurrent();
+                // this.temp = res.current.temp;
+                // this.humidity = res.current.humidity;
+                // this.windSpeed = res.current.wind_speed;
+                // this.uvIndex = res.current.uvi;
+                // this.iconId = res.current.weather[0].icon;
+                this.renderCurrent(res.current);
                 this.renderForecast(res.daily);
             });
     },
 
-    renderCurrent() {
+    renderCurrent(current) {
         this.card.children('.card-title')
             .text(`${this.city} (${this.date.toLocaleDateString()})`)
-            .append($('<img>').attr('src', `http://openweathermap.org/img/wn/${this.iconId}.png`));
-        this._renderTemp();
-        this._renderHumidity();
-        this._renderWindSpeed();
-        this._renderUvIndex();
+            .append($('<img>').attr('src', `http://openweathermap.org/img/wn/${current.weather[0].icon}.png`));
+        
+        this.card.children('#temp')
+            .text(`Temperature: ${current.temp} °F`);
+
+        this.card.children('#humidity')
+            .text(`Humidity: ${current.humidity}%`);
+        
+        this.card.children('#wind-speed')
+            .text(`Wind Speed: ${current.wind_speed} MPH`);
+    
+        this.card.children('#uv-index')
+            .empty()
+            .append(
+                'UV Index: ',
+                $('<span>')
+                    .addClass('badge')
+                    .addClass(`uv-${this._uvIndexEvaluation(current.uvi)}`)
+                    .text(current.uvi)
+            )
+
     },
 
-    /**
-     * 
-     * @param {Array} forecast 
-     */
     renderForecast(forecast) {
         $('.forecast').each((i, el) => {
             let dailyWeather = forecast[i];
@@ -58,45 +64,18 @@ let weather = {
         })
     },
 
-    _uvIndexEvaluation() {
-        if (this.uvIndex < 3) {
+    _uvIndexEvaluation(uvi) {
+        if (uvi < 3) {
             return 'low';
-        } else if (this.uvIndex < 6) {
+        } else if (uvi < 6) {
             return 'medium';
-        } else if (this.uvIndex < 8) {
+        } else if (uvi < 8) {
             return 'high';
-        } else if (this.uvIndex < 11) {
+        } else if (uvi < 11) {
             return 'very-high';
-        } else if (this.uvIndex >= 11) {
+        } else if (uvi >= 11) {
             return 'extreme';
         }
-    },
-
-    _renderTemp() {
-        this.card.children('#temp')
-            .text(`Temperature: ${this.temp} °F`);
-    },
-
-    _renderHumidity() {
-        this.card.children('#humidity')
-            .text(`Humidity: ${this.humidity}%`);
-    },
-
-    _renderWindSpeed() {
-        this.card.children('#wind-speed')
-            .text(`Wind Speed: ${this.windSpeed} MPH`);
-    },
-
-    _renderUvIndex() {
-        this.card.children('#uv-index')
-            .empty()
-            .append(
-                'UV Index: ',
-                $('<span>')
-                    .addClass('badge')
-                    .addClass(`uv-${this._uvIndexEvaluation()}`)
-                    .text(this.uvIndex)
-            )
     },
 
     _renderForecastCard(jqCard, dailyWeather) {
