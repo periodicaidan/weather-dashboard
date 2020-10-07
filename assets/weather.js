@@ -6,7 +6,8 @@ const ONECALL_ENDPOINT = `${OPENWEATHER_URL}/onecall?appid=${API_KEY}`;
 let weather = {
     _city: '',
     date: new Date(),
-    card: $('#current-weather>.card-body'),
+    currentCard: $('#current-weather>.card-body'),
+    forecastCards: $('.forecast'),
 
     get city() {
         return this._city;
@@ -14,38 +15,33 @@ let weather = {
 
     set city(newCity) {
         this._city = newCity;
-        this.fetch();
+        this.fetchAndRender();
     },
 
-    async fetch() {
+    async fetchAndRender() {
         let { coord } = await $.get(`${WEATHER_ENDPOINT}&q=${this.city}`)
         $.get(`${ONECALL_ENDPOINT}&lon=${coord.lon}&lat=${coord.lat}&exclude=minutely,hourly,alerts&units=imperial`)
             .then(res => {
-                // this.temp = res.current.temp;
-                // this.humidity = res.current.humidity;
-                // this.windSpeed = res.current.wind_speed;
-                // this.uvIndex = res.current.uvi;
-                // this.iconId = res.current.weather[0].icon;
                 this.renderCurrent(res.current);
                 this.renderForecast(res.daily);
             });
     },
 
     renderCurrent(current) {
-        this.card.children('.card-title')
+        this.currentCard.children('.card-title')
             .text(`${this.city} (${this.date.toLocaleDateString()})`)
             .append($('<img>').attr('src', `http://openweathermap.org/img/wn/${current.weather[0].icon}.png`));
         
-        this.card.children('#temp')
+        this.currentCard.children('#temp')
             .text(`Temperature: ${current.temp} °F`);
 
-        this.card.children('#humidity')
+        this.currentCard.children('#humidity')
             .text(`Humidity: ${current.humidity}%`);
         
-        this.card.children('#wind-speed')
+        this.currentCard.children('#wind-speed')
             .text(`Wind Speed: ${current.wind_speed} MPH`);
     
-        this.card.children('#uv-index')
+        this.currentCard.children('#uv-index')
             .empty()
             .append(
                 'UV Index: ',
@@ -58,7 +54,7 @@ let weather = {
     },
 
     renderForecast(forecast) {
-        $('.forecast').each((i, el) => {
+        this.forecastCards.each((i, el) => {
             let dailyWeather = forecast[i];
             this._renderForecastCard($(el), dailyWeather);
         })
@@ -86,13 +82,17 @@ let weather = {
                 date.setTime(dailyWeather.dt * 1000);
                 return date.toLocaleDateString();
             })());
+
         jqCard.children('.forecast-icon')
+            .empty()
             .append(
                 $('<img>')
                     .attr('src', `http://openweathermap.org/img/wn/${dailyWeather.weather[0].icon}@2x.png`)
             );
+
         jqCard.children('.forecast-temp')
             .text(`Temp: ${dailyWeather.temp.day} °F`);
+
         jqCard.children('.forecast-humidity')
             .text(`Humidity: ${dailyWeather.humidity}%`);
     }
@@ -136,6 +136,7 @@ let searchHistory = {
 
     load() {
         this.cities = JSON.parse(localStorage.getItem(this.storageKey)) ?? [];
+        this.cities.length > 0 && (weather.city = this.cities[0]);
     }
 }
 
@@ -152,7 +153,7 @@ $('form#city-search button[type="submit"]').on('click', function (e) {
 $(document).ready(() => {
     searchHistory.load();
     searchHistory.render();
-    weather.fetch();
+    weather.fetchAndRender();
 });
 
 // Save search history to localStorage when window is closed or refreshed
